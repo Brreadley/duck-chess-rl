@@ -1,11 +1,13 @@
-"""
-chess_ui.py — tkinter интерфейс для ChessGame.
-Логика полностью в chess_game.py, здесь только отображение.
-"""
+# GUI.py - tkinter rozhranie pre Duck Chess (hra dvoch hráčov).
+# Herná logika je úplne v chess.py - tu je iba zobrazenie a obsluha myši.
+#
+# Spustenie:
+#     python GUI.py
+
 import tkinter
 import tkinter.messagebox
-from chessAI.chess import (ChessGame, Move, DuckMove,
-                           Pawn, Knight, Bishop, Rook, Queen, King)
+from chess import (ChessGame, Move, DuckMove,
+                   Pawn, Knight, Bishop, Rook, Queen, King)
 
 
 class ChessUI:
@@ -14,20 +16,22 @@ class ChessUI:
         self.game   = ChessGame()
         self.canvas = tkinter.Canvas(root, width=640, height=640)
         self.canvas.pack()
+
         self.canvas.bind("<Button-1>",        self.on_click)
         self.canvas.bind("<B1-Motion>",       self.on_motion)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
         self.selected_piece = None
         self.drag_offset    = (0, 0)
-        self.piece_ids      = {}   # piece → canvas id
+        self.piece_ids      = {}   # figúra -> id objektu na plátne
 
         self._draw_board()
         self._draw_pieces()
 
-    # ── Отрисовка ────────────────────────────────
+    # --- Kreslenie ---------------------------------------------
 
     def _draw_board(self):
+        # Nakreslíme šachovnicu - striedame svetlé a tmavé polia
         for i in range(8):
             for j in range(8):
                 color = "#EEE" if (i + j) % 2 == 0 else "#777"
@@ -35,6 +39,7 @@ class ChessUI:
                     i*80, j*80, (i+1)*80, (j+1)*80, fill=color)
 
     def _draw_pieces(self):
+        # Nakreslíme všetky figúry na ich aktuálnych pozíciách
         for piece in self.game.pieces:
             cid = self.canvas.create_text(
                 piece.row * 80 + 40,
@@ -43,7 +48,8 @@ class ChessUI:
                 font=("Arial", 50)
             )
             self.piece_ids[piece] = cid
-        # Рисуем утку
+
+        # Nakreslíme kačicu ak už bola postavená
         duck = self.game.duck
         if duck.col is not None:
             self.canvas.create_text(
@@ -51,12 +57,13 @@ class ChessUI:
                 duck.col * 80 + 40,
                 text="🦆", font=("Arial", 40), tags="duck"
             )
-        # Если фаза утки — подсвечиваем доступные клетки
+
+        # Ak je fáza kačice — zvýrazníme dostupné polia
         if self.game.duck_phase:
             self._highlight_duck_squares()
 
     def _highlight_duck_squares(self):
-        """Подсвечиваем клетки куда можно поставить утку."""
+        # Zvýrazníme zlatým rámčekom polia, kam možno kačicu umiestniť
         for dm in self.game.duck_actions():
             self.canvas.create_rectangle(
                 dm.row * 80 + 2, dm.col * 80 + 2,
@@ -65,23 +72,24 @@ class ChessUI:
             )
 
     def _redraw(self):
-        """Полная перерисовка после хода."""
+        # Úplné prekreslenie po každom ťahu
         self.canvas.delete("all")
         self._draw_board()
         self.piece_ids = {}
         self._draw_pieces()
 
     def _move_canvas_piece(self, piece):
+        # Vrátime figúru na jej pôvodné miesto (neplatný ťah - pustenie mimo dosky)
         cid = self.piece_ids.get(piece)
         if cid:
             x = piece.row * 80 + 40
             y = piece.col * 80 + 40
             self.canvas.coords(cid, x, y)
 
-    # ── Мышь ────────────────────────────────────
+    # --- Myš ---------------------------------------------
 
     def on_click(self, event):
-        # В фазе утки — клик сразу ставит утку
+        # Fáza kačice - klik ihneď umiestni kačicu na zvolené pole
         if self.game.duck_phase:
             col = event.y // 80
             row = event.x // 80
@@ -91,11 +99,10 @@ class ChessUI:
                     self.game.step(dm.to_index())
                     self._redraw()
                     if self.game.done:
-                        result = self.game.winner()
-                        msg = "Ничья!" if result == "draw" else f"Победили {'Белые' if result == 'w' else 'Чёрные'}!"
-                        tkinter.messagebox.showinfo("Конец игры", msg)
+                        self._show_result()
             return
 
+        # Bežná fáza - vyberieme figúru pod kurzorom
         item = self.canvas.find_closest(event.x, event.y)
         for p, cid in self.piece_ids.items():
             if cid == item[0] and p.color == self.game.turn:
@@ -103,10 +110,12 @@ class ChessUI:
                 x = p.row * 80 + 40
                 y = p.col * 80 + 40
                 self.drag_offset = (x - event.x, y - event.y)
+                # Vybraná figúra sa zobrazí nad ostatnými
                 self.canvas.tag_raise(cid)
                 return
 
     def on_motion(self, event):
+        # Presúvame figúru myšou - aktualizujeme jej polohu na plátne
         if self.game.duck_phase or not self.selected_piece:
             return
         dx, dy = self.drag_offset
@@ -115,6 +124,7 @@ class ChessUI:
             self.canvas.coords(cid, event.x + dx, event.y + dy)
 
     def on_release(self, event):
+        # Pustili sme figúru - overíme či je ťah legálny a vykonáme ho
         if not self.selected_piece:
             return
 
@@ -124,7 +134,7 @@ class ChessUI:
         if 0 <= to_col < 8 and 0 <= to_row < 8:
             legal = self.game.legal_moves()
 
-            # Проверяем — есть ли ходы с превращением на эту клетку
+            # Ťahy s premenou pešiaka na cieľové pole
             promo_moves = [m for m in legal
                            if (m.from_col == self.selected_piece.col
                                and m.from_row == self.selected_piece.row
@@ -132,6 +142,7 @@ class ChessUI:
                                and m.to_row == to_row
                                and m.promotion is not None)]
 
+            # Bežné ťahy na cieľové pole (bez premeny)
             normal_moves = [m for m in legal
                             if (m.from_col == self.selected_piece.col
                                 and m.from_row == self.selected_piece.row
@@ -140,6 +151,7 @@ class ChessUI:
                                 and m.promotion is None)]
 
             if promo_moves:
+                # Pýtame sa hráča na čo premeniť pešiaka
                 chosen = self._ask_promotion()
                 target = next((m for m in promo_moves
                                if m.promotion == chosen), promo_moves[0])
@@ -149,40 +161,40 @@ class ChessUI:
                 self.game.step(normal_moves[0].to_index() + 64)
                 self._redraw()
             else:
+                # Neplatný ťah - vrátime figúru na pôvodné miesto
                 self._move_canvas_piece(self.selected_piece)
 
-            # После хода фигурой — ждём хода утки (не показываем конец)
+            # Koniec hry zobrazíme až po ťahu kačice (nie hneď po zajatí kráľa)
             if self.game.done and not self.game.duck_phase:
-                result = self.game.winner()
-                msg = "Ничья!" if result == "draw" else f"Победили {'Белые' if result == 'w' else 'Чёрные'}!"
-                tkinter.messagebox.showinfo("Конец игры", msg)
+                self._show_result()
         else:
+            # Pustili sme figúru mimo dosky - vrátime ju späť
             self._move_canvas_piece(self.selected_piece)
 
         self.selected_piece = None
 
-    def _ask_promotion(self):
-        """Диалог выбора фигуры при превращении пешки."""
-        from chessAI.chess import Queen, Rook, Bishop, Knight
-        dialog = tkinter.Toplevel(self.root)
-        dialog.title("Выберите фигуру")
-        dialog.resizable(False, False)
-        dialog.grab_set()
+    # --- Dialógy ---------------------------------------------
 
-        chosen = [Queen]  # по умолчанию ферзь
+    def _ask_promotion(self):
+        # Dialógové okno pre výber figúry pri premene pešiaka
+        dialog = tkinter.Toplevel(self.root)
+        dialog.title("Premena pešiaka")
+        dialog.resizable(False, False)
+        dialog.grab_set()   # blokujeme hlavné okno kým hráč nevyberie
+
+        chosen = [Queen]   # predvolená voľba - dáma
 
         options = [
-            ("Ферзь ♕",  Queen),
-            ("Ладья ♖",  Rook),
-            ("Слон ♗",   Bishop),
-            ("Конь ♘",   Knight),
+            ("Dáma ♕",    Queen),
+            ("Veža ♖",    Rook),
+            ("Strelec ♗", Bishop),
+            ("Jazdec ♘",  Knight),
         ]
 
-        tkinter.Label(dialog, text="В кого превратить пешку?",
+        tkinter.Label(dialog, text="Na čo premeniť pešiaka?",
                       font=("Arial", 14), pady=10).pack()
 
         for label, piece_class in options:
-            pc = piece_class  # захват в замыкании
             def make_handler(cls):
                 def handler():
                     chosen[0] = cls
@@ -190,13 +202,24 @@ class ChessUI:
                 return handler
             tkinter.Button(dialog, text=label, font=("Arial", 16),
                            width=12, pady=5,
-                           command=make_handler(pc)).pack(pady=2)
+                           command=make_handler(piece_class)).pack(pady=2)
 
         dialog.wait_window()
         return chosen[0]
 
+    def _show_result(self):
+        # Zobrazíme výsledok hry v dialógovom okne
+        result = self.game.winner()
+        if result == "draw":
+            msg = "Remíza!"
+        elif result == "w":
+            msg = "Vyhrali Biele! ♔"
+        else:
+            msg = "Vyhrali Čierne! ♚"
+        tkinter.messagebox.showinfo("Koniec hry", msg)
 
-# ── Запуск ───────────────────────────────────────
+
+# --- Spustenie ---------------------------------------------
 
 if __name__ == "__main__":
     root = tkinter.Tk()
