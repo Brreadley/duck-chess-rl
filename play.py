@@ -285,7 +285,7 @@ class PlayUI:
         # Fáza kačice - hráč postaví sám (on_click to spracuje)
         # Agent bude zavolaný po tom, ako hráč postaví kačicu
 
-    # ── Dialógy ──────────────────────────────────────
+    # --- Dialógy ---------------------------------------------
 
     def _ask_promotion(self):
         dialog = tkinter.Toplevel(self.root)
