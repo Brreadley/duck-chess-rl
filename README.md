@@ -26,6 +26,8 @@ Implementácia algoritmu AlphaZero pre hru Duck Chess.
 Trénovanie od nuly cez `train.py` nevyžaduje žiadne checkpointy —  
 sieť sa inicializuje náhodne a učí od prvej generácie.
 
+Moje výsledky tam nebudú, pretože vážia viac ako 2 gigabajty
+
 ---
 
 ## Poznámky
