@@ -34,3 +34,4 @@ Moje výsledky tam nebudú, pretože vážia viac ako 2 gigabajty
 
 - Model sa počas projektu **neskonvergoval** z dôvodu nedostatku výpočtových zdrojov (CPU, ~15–20 hodín na 100 generácií × 50 partií)
 - Pre skutočnú konvergenciu je potrebné GPU a rádovo 10× viac generácií
+- Všetky komentáre boli preložené do slovenčiny pomocou umelej inteligencie pre uľahčenie analýzy kódu.
